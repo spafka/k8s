@@ -215,7 +215,7 @@ spec:
       tolerations:  # 由于我这里的边缘节点只有 master 一个节点，所有需要加容忍
         - operator: "Exists"
       nodeSelector:
-        kubernetes.io/hostname: master-node # 注意改为 master hostname
+        kubernetes.io/hostname: k8s-master # 注意改为 master hostname
       serviceAccountName: nginx-ingress-serviceaccount
       hostNetwork: true # 使用节点的 host 网络方式
       containers:
