@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+  namespace: default
+  labels:
+    app: redis-app
+spec:
+  selector:
+    app: redis-app
+  type: ClusterIP
+  ports:
+    - port: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-app
+  namespace: default
+  labels:
+    app: redis-app
+spec:
+  selector:
+    matchLabels:
+      app: redis-app
+  replicas: 1 # only 1
+  template:
+    metadata:
+      labels:
+        app: redis-app
+    spec:
+      containers:
+        - name: redis-app
+          image: redis:3.2.12
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+---
+apiVersion: apps/v1 # 1.19
+kind: Deployment
+metadata:
+  name: spring-boot
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: spring
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: spring
+    spec:
+      containers:
+        - name: spring
+          image: registry.cn-shanghai.aliyuncs.com/dockerhub2019/spring-ingress:0.0.2
+          ports:
+            - containerPort: 8080
+              name: spring-rest
+              protocol: TCP
+          env:
+            - name: REDIS_HOST
+              value: redis-svc.default.svc.cluster.local
+            - name: REDIS_PORT
+              value: '6379'
+            - name: JAVA_OPTS
+              value: '-XX:+UseG1GC'
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 50m
+          lifecycle:
+            preStop: # https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#cloud-deployment-kubernetes
+              exec:
+                command: [ "sh", "-c", "sleep 15" ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-boot-svc
+  namespace: default
+  labels:
+    app: spring
+spec:
+  selector:
+    app: spring
+  ports:
+    - name: spring-rest
+      port: 8080
+      targetPort: spring-rest
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: spring-boot-ingress
+  namespace: default
+spec:
+  rules:
+    - host: spring.k8s.me # 本地要测试域名可以写 Hosts
+      http:
+        paths:
+          - backend:
+              serviceName: spring-boot-svc
+              servicePort: spring-rest
