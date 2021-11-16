@@ -18,7 +18,6 @@ function red_echo () {
         echo -e "\e[1;31m[error] ${what} \e[0m"
         exit 1
 }
-#MASTER="192.168.32.134"
 if [ -z $MASTER ]; then red_echo "设置 localIp"
 fi
 
@@ -26,7 +25,23 @@ green_echo "set hostname"
 hostnamectl set-hostname k8s-master
 
 
-apt install wget curl vim git -y
+
+green_echo "install maven"
+apt install -y wget
+wget https://archive.apache.org/dist/maven/maven-3/3.8.2/binaries/apache-maven-3.8.2-bin.tar.gz
+tar -zxvf apache-maven-3.8.2-bin.tar.gz -C /usr/local
+ln -s /usr/local/apache-maven* /usr/local/maven
+echo "export PATH=\$PATH:/usr/local/maven/bin" >> /etc/profile
+source /etc/profile
+
+# shellcheck disable=SC1072
+
+
+sudo apt install openjdk-8-jdk -y
+if [ ! type javac >> /dev/null 2>&1]; then
+   red_echo "java not intalled"
+fi
+apt install wget curl vim git ipvsadm  dnsutils net-tools -y
 green_echo "close firewall"
 iptables -P INPUT ACCEPT
 iptables -P FORWARD ACCEPT
@@ -45,7 +60,7 @@ dpkg -i /home/deploy/deb/docker/*.deb
 #apt-get purge -y docker-ce docker-ce-cli containerd.io
 #rm -rf /var/lib/docker
 
-cat > /etc/docker/daemon.conf << ERIC
+cat > /etc/docker/daemon.json << ERIC
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
   "log-driver": "json-file",
@@ -77,17 +92,12 @@ EOF
 
 sudo apt-get update
 sudo apt-mark hold kubelet kubeadm kubectl
-apt -y install kubelet=1.19.0-00 kubeadm=1.19.0-00 kubectl=1.19.0-00 -y
+
+yellow_echo $(apt-cache madison kubeadm)
+apt  install kubelet=1.19.0-00 kubeadm=1.19.0-00 kubectl=1.19.0-00
 
 # kubeadm config images list --kubernetes-version=v1.19.0
 
-k8s.gcr.io/kube-apiserver:v1.19.0
-k8s.gcr.io/kube-controller-manager:v1.19.0
-k8s.gcr.io/kube-scheduler:v1.19.0
-k8s.gcr.io/kube-proxy:v1.22.3
-k8s.gcr.io/pause:3.2
-k8s.gcr.io/etcd:3.4.9-1
-k8s.gcr.io/coredns:1.7.0
 
 cat > download_image.sh << ERIC
 #!/bin/bash
@@ -120,7 +130,6 @@ chmod -R 755 download_image.sh
 
 ## iP replase
 cat > kubeadm-init.yaml << ERIC
-
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
 kubernetesVersion: v1.19.0
@@ -130,17 +139,15 @@ localAPIEndpoint:
   bindPort: 6443
 
 networking:
-  # 告诉k8s，集群内部都基于cluster.local这个域名解析
   dnsDomain: apiserver.cluster.local
   podSubnet: 10.244.0.0/16
   serviceSubnet: 10.96.0.0/12
 scheduler: {}
-
 ERIC
-
-docker tag  k8s.gcr.io/coredns:v1.8.4 k8s.gcr.io/coredns/coredns:v1.8.4
 swapoff -a && sed -ri 's/.*swap.*/#&/' /etc/fstab
 kubeadm init --config kubeadm-init.yaml
 
-
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
 
