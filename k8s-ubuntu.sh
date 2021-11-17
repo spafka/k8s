@@ -35,7 +35,9 @@ echo "export PATH=\$PATH:/usr/local/maven/bin" >> /etc/profile
 source /etc/profile
 
 # shellcheck disable=SC1072
-
+if [ ! type mvn > /dev/null 2 >&1]; then
+   red_echo "mvn not intalled"
+fi
 
 sudo apt install openjdk-8-jdk -y
 if [ ! type javac >> /dev/null 2>&1]; then
