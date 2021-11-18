@@ -2,6 +2,15 @@ drbdsetup /dev/drbd0 primary --force
 
 sleep 10
 
+export VIP=192.168.18.174
+export INTERFACE=ens160
+
+if [ -z $VIP ]; then
+    red_echo "VIP"
+fi
+if [ -z $INTERFACE ]; then
+    red_echo "$INTERFACE"
+fi
 cat /proc/drbd
 
 cat <<EOF >  /etc/keepalived/keepalived.conf
@@ -16,7 +25,7 @@ vrrp_script chk_nfs {
 
 vrrp_instance VI_1 {
     state MASTER
-    interface ens33
+    interface ${INTERFACE}
     virtual_router_id 51
     priority 100
     advert_int 1
@@ -28,7 +37,7 @@ vrrp_instance VI_1 {
        chk_nfs
     }
     virtual_ipaddress {
-       192.168.32.10
+       ${VIP}
     }
     nopreempt
     notify_stop "/etc/keepalived/notify_stop.sh"
@@ -37,6 +46,20 @@ vrrp_instance VI_1 {
 EOF
 
 cat >/etc/keepalived/check_nfs.sh <<EOF
+#!/bin/bash
+systemctl status nfs-server > /dev/null 2>&1
+if [ $? -ne 0 ];then
+    systemctl restart nfs-server > /dev/null 2>&1
+    systemctl status nfs-server > /dev/null 2>&1
+    if [ $? -ne 0 ];then
+        umount /dev/drbd0
+        drbdadm secondary r0
+        systemctl stop keepalived
+    fi
+fi
+EOF
+
+cat > /etc/keepalived/notify_stop.sh <<EOF
 #!/bin/bash
 set -o errexit
 
@@ -48,6 +71,7 @@ umount /dev/drbd0 &>> /etc/keepalived/logs/notify_stop.log
 drbdsetup /dev/drbd0 secondary &>> /etc/keepalived/logs/notify_stop.log
 echo -e "\n" >> /etc/keepalived/logs/notify_stop.log
 EOF
+
 
 
 mkfs.ext4 /dev/drbd0

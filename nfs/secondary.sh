@@ -1,3 +1,12 @@
+
+if [ -z $VIP ]; then
+    red_echo "VIP"
+fi
+
+if [ -z $INTERFACE ]; then
+    red_echo "$INTERFACE"
+fi
+
 cat > /etc/keepalived/keepalived.conf <<EOF
 global_defs {
    router_id DRBD_HA_BACKUP
@@ -5,7 +14,7 @@ global_defs {
 
 vrrp_instance VI_1 {
     state BACKUP
-    interface ens33
+    interface ${INTERFACE}
     virtual_router_id 51
     priority 90
     advert_int 1
@@ -18,7 +27,7 @@ vrrp_instance VI_1 {
    notify_master "/etc/keepalived/notify_master.sh"
    notify_backup "/etc/keepalived/notify_backup.sh"
     virtual_ipaddress {
-        192.168.32.10
+        ${VIP}
     }
 }
 EOF

@@ -20,10 +20,10 @@ vgcreate  ubuntu-vg /dev/sdb
 vgextend ubuntu-vg /dev/sdb
 lvcreate -L 19G -n lv00 ubuntu-vg
 
-export HOST1=spafka1
-export HOST2=spafka2
-export IP1=192.168.32.141
-export IP2=192.168.32.138
+export HOST1=ubuntu-nfs1
+export HOST2=ubuntu-nfs2
+export IP1=192.168.18.130
+export IP2=192.168.18.131
 
 if [ -z $HOST1 ]; then
     red_echo "HOST1 unset"
@@ -44,7 +44,9 @@ fi
 
 
 
-
+cat <<EOF >/etc/exports
+/nfs *(rw,sync,no_subtree_check,no_root_squash)
+EOF
 
 cat << EOF >/etc/drbd.conf
 global { usage-count no; }
@@ -83,6 +85,7 @@ systemctl start drbd
 systemctl enable drbd
 
 
+
 cat /proc/drbd
 
 
@@ -99,8 +102,6 @@ exportfs -a &>> /etc/keepalived/logs/notify_master.log
 echo -e "\n" >> /etc/keepalived/logs/notify_master.log
 EOF
 
-cat <<EOF >/etc/exports
-/nfs *(rw,sync,no_subtree_check,no_root_squash)
-EOF
-
 mkdir -p  /nfs
+
+
