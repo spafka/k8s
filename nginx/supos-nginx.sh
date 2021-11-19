@@ -1,4 +1,18 @@
-cat >/root/tools/nginx/conf.d/supos-nginx.conf << EOF
+function red_echo () {
+        local what=$*
+        echo -e "\e[1;31m[error] ${what} \e[0m"
+        exit 1
+}
+if [ -z $W1 ]; then
+      red_echo "W1 unset"
+fi
+if [ -z $W2 ]; then
+      red_echo "W2 unset"
+fi
+if [ -z $W3 ]; then
+      red_echo "W3 unset"
+fi
+cat > tools/nginx/conf.d/supos-nginx.conf << EOF
 upstream backend {
     server ${W1} max_fails=2 fail_timeout=120s;   ### 当两次失败后，屏蔽 60s
     server ${W2} max_fails=2 fail_timeout=120s;
@@ -23,17 +37,55 @@ server {
     proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
     proxy_set_header Host dt.175.dev.supos.net;
     proxy_http_version 1.1;
-    proxy_set_header   X-Real-IP        $remote_addr;
-    proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Real-IP        \$remote_addr;
+    proxy_set_header   X-Forwarded-For  \$proxy_add_x_forwarded_for;
 
-    proxy_set_header  X-Forwarded-Port  $server_port;
-    proxy_set_header  X-Forwarded-Proto $scheme;
-    proxy_set_header  X-Forwarded-Host  $host;
+    proxy_set_header  X-Forwarded-Port  \$server_port;
+    proxy_set_header  X-Forwarded-Proto \$scheme;
+    proxy_set_header  X-Forwarded-Host  \$host;
 
     proxy_connect_timeout   5s;
     proxy_send_timeout      60s;
     proxy_read_timeout      300s;        ###当其中一个 upstream 宕机后，影响页面的响应切换时间，也影响正常业务的大图片，长时间的接口
-    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "Upgrade";
+  }
+}
+EOF
+
+cat >  tools/nginx/conf.d/monitoring-nginx.conf <<EOF
+server {
+  listen 3000;
+  server_name _;
+  location / {
+    proxy_pass http://backend/;
+    proxy_set_header Host grafana.example.supos.ai;   ###修改为安装目录 bin/env.sh 里的 DOMAIN 参数，使用默认值时无需修改
+    proxy_http_version 1.1;
+    proxy_set_header   X-Real-IP        \$remote_addr;
+    proxy_set_header   X-Forwarded-For  \$proxy_add_x_forwarded_for;
+    proxy_connect_timeout   60s;
+    proxy_send_timeout      90s;
+    proxy_read_timeout      90s;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "Upgrade";
+  }
+}
+EOF
+
+cat > tools/nginx/conf.d/alerts-nginx.conf <<EOF
+server {
+  listen 9093;
+  server_name _;
+  location / {
+    proxy_pass http://backend/;
+    proxy_set_header Host alerts.example.supos.ai;    ###修改为安装目录 bin/env.sh 里的 DOMAIN 参数，使用默认值时无需修改
+    proxy_http_version 1.1;
+    proxy_set_header   X-Real-IP        \$remote_addr;
+    proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_connect_timeout   60s;
+    proxy_send_timeout      90s;
+    proxy_read_timeout      90s;
+    proxy_set_header Upgrade \$http_upgrade;
     proxy_set_header Connection "Upgrade";
   }
 }

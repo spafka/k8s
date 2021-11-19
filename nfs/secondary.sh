@@ -1,4 +1,5 @@
-
+export VIP=192.168.18.174
+export INTERFACE=ens160
 if [ -z $VIP ]; then
     red_echo "VIP"
 fi
@@ -38,7 +39,7 @@ cat >/etc/keepalived/notify_backup.sh  <<EOF
 set -o errexit
 
 time=`date "+%F  %H:%M:%S"`
-echo -e "$time    ------notify_backup------\n" >> /etc/keepalived/logs/notify_backup.log
+echo -e "\$time    ------notify_backup------\n" >> /etc/keepalived/logs/notify_backup.log
 systemctl stop nfs-server &>> /etc/keepalived/logs/notify_backup.log
 exportfs -au &>> /etc/keepalived/logs/notify_backup.log
 umount /dev/drbd0 &>> /etc/keepalived/logs/notify_backup.log
@@ -53,7 +54,7 @@ cat > /etc/keepalived/notify_master.sh <<EOF
 set -o errexit
 
 time=`date "+%F  %H:%M:%S"`
-echo -e "$time    ------notify_master------\n" >> /etc/keepalived/logs/notify_master.log
+echo -e "\$time    ------notify_master------\n" >> /etc/keepalived/logs/notify_master.log
 drbdsetup /dev/drbd0 primary &>> /etc/keepalived/logs/notify_master.log
 mount /dev/drbd0 /nfs &>> /etc/keepalived/logs/notify_master.log
 systemctl restart nfs-server &>> /etc/keepalived/logs/notify_master.log

@@ -24,6 +24,8 @@ export HOST1=ubuntu-nfs1
 export HOST2=ubuntu-nfs2
 export IP1=192.168.18.130
 export IP2=192.168.18.131
+mkdir /nfs
+
 
 if [ -z $HOST1 ]; then
     red_echo "HOST1 unset"
