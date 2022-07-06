@@ -41,7 +41,10 @@ function run_function(){
 
 function install_docker(){
   info "1.使用脚本自动安装docker..."
-  curl -sSL https://get.daocloud.io/docker | sh
+  wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
+   yum list docker-ce --showduplicates
+
+   yum install --setopt=obsoletes=0 docker-ce-19.03.9-3.el7 -y
 
   info "2.启动 Docker CE..."
   sudo systemctl enable docker
@@ -131,6 +134,23 @@ EOF
   info "时间同步"
   yum install ntpdate -y
   ntpdate time.windows.com
+
+  info "加载网桥过滤模块"
+  modprobe br_netfilter
+  lsmod | grep br_netfilter
+
+  yum install ipset ipvsadmin -y
+  cat <<EOF >  /etc/sysconfig/modules/ipvs.modules
+#!/bin/bash
+modprobe -- ip_vs
+modprobe -- ip_vs_rr
+modprobe -- ip_vs_wrr
+modprobe -- ip_vs_sh
+modprobe -- nf_conntrack_ipv4
+EOF
+ chmod +x /etc/sysconfig/modules/ipvs.modules
+ /bin/bash /etc/sysconfig/modules/ipvs.modules
+ lsmod | grep -e ip_vs -e nf_conntrack_ipv4
 }
 
 # 添加aliyun安装源
@@ -460,4 +480,9 @@ fi
 read -p "是否安装k8s？默认为：no. Enter [yes/no]：" is_k8s
 if [[ "$is_k8s" == 'yes' ]];then
   run_function "install_k8s"
+fi
+
+read -p "是否安装flunnel默认为：no. Enter [yes/no]：" is_k8s
+if [[ "$is_k8s" == 'yes' ]];then
+  run_function "install_flannel"
 fi
