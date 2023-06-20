@@ -107,6 +107,10 @@ function install_k8s() {
 
     info "去污点..."
     kubectl taint nodes --all node-role.kubernetes.io/master-
+    yum install bash-completion -y
+    source /usr/share/bash-completion/bash_completion
+    source <(kubectl completion bash)
+
 }
 
 # 初始化部署环境
@@ -486,3 +490,4 @@ read -p "是否安装flunnel默认为：no. Enter [yes/no]：" is_k8s
 if [[ "$is_k8s" == 'yes' ]];then
   run_function "install_flannel"
 fi
+
