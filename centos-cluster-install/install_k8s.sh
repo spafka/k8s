@@ -111,6 +111,8 @@ function install_k8s() {
     source /usr/share/bash-completion/bash_completion
     source <(kubectl completion bash)
 
+    echo "https://segmentfault.com/a/1190000022657377?utm_source=sf-similar-article 使用ipvs"
+
 }
 
 # 初始化部署环境
@@ -143,7 +145,7 @@ EOF
   modprobe br_netfilter
   lsmod | grep br_netfilter
 
-  yum install ipset ipvsadmin -y
+  yum install ipset ipvsad-y
   cat <<EOF >  /etc/sysconfig/modules/ipvs.modules
 #!/bin/bash
 modprobe -- ip_vs
